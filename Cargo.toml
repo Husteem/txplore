@@ -2,7 +2,7 @@
 name = "txplore"
 version = "0.1.0"
 edition = "2021"
-authors = ["akshola00"]
+authors = ["husteemah"]
 description = "A powerful Bitcoin transaction explorer, script disassembler, and deep analyzer in Rust"
 readme = "README.md"
 license = "MIT OR Apache-2.0"

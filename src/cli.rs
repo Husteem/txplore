@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(name = "txplore")]
-#[command(author = "akshola00")]
+#[command(author = "husteemah")]
 #[command(version = "0.1.0")]
 #[command(about = "A high-performance Bitcoin Transaction Explorer, Script Disassembler, and Analyzer in Rust", long_about = None)]
 pub struct Cli {

@@ -1,7 +1,7 @@
 # Capstone Project Presentation: txplore
 
 **Project Title**: `txplore`: High-Performance Bitcoin Transaction Explorer, Script Disassembler & Stack VM Simulator  
-**Author**: Naim Hussain (Discord: `akshola00`)  
+**Author**: Naim Hussain (Discord: `@husteemah`)  
 **Cohort**: Rust for Bitcoin 2.0  
 **Repository**: `https://github.com/Husteem/txplore`  
 

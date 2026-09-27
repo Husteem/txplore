@@ -284,7 +284,7 @@ pub const INDEX_HTML: &str = r##"<!DOCTYPE html>
 
     <footer>
         <p>Built with <strong>Rust (rust-bitcoin 0.32, Axum, Ratatui)</strong> for the Rust for Bitcoin Capstone Project</p>
-        <p style="margin-top:0.25rem; font-size:0.75rem; color:#64748b;">Author: <code>akshola00</code></p>
+        <p style="margin-top:0.25rem; font-size:0.75rem; color:#64748b;">Author: <code>@husteemah</code></p>
     </footer>
 
     <script>

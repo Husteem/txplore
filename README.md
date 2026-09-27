@@ -4,7 +4,7 @@
 [![Bitcoin](https://img.shields.io/badge/bitcoin-v0.32-yellow.svg)](https://crates.io/crates/bitcoin)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
 
-**txplore** is a production-grade, zero-dependency-runtime Bitcoin transaction explorer, script disassembler, and execution debugger written in Rust. Built as the Capstone Project for the *Rust for Bitcoin* cohort by **akshola00**.
+**txplore** is a production-grade, zero-dependency-runtime Bitcoin transaction explorer, script disassembler, and execution debugger written in Rust. Built as the Capstone Project for the *Rust for Bitcoin* cohort by **Naim Hussain (@husteemah)**.
 
 It delivers deep visibility into Bitcoin transactions, moving beyond surface-level block explorers to provide byte-level consensus verification, step-by-step Script VM stack simulation, BIP174/BIP370 PSBT analysis, and multi-interface rendering (CLI tables, Markdown audit reports, Mermaid DAG diagrams, interactive Ratatui TUI, and an embedded Axum web dashboard).
 

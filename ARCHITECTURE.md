@@ -1,6 +1,6 @@
 # Architecture Design Document: txplore
 
-**Author**: akshola00  
+**Author**: Naim Hussain (@husteemah)  
 **Project**: Rust for Bitcoin Cohort Capstone - Option 4: Transaction Explorer  
 **Repository**: `/home/x0/transaction-explorer`  
 
