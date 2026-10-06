@@ -98,6 +98,15 @@ pub const INDEX_HTML: &str = r##"<!DOCTYPE html>
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.04em;
+            cursor: default;
+        }
+        .tag-btn {
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .tag-btn:hover {
+            border-color: var(--border-focus);
+            color: var(--text);
         }
         .tag-accent {
             border-color: rgba(245, 158, 11, 0.4);
@@ -217,6 +226,10 @@ pub const INDEX_HTML: &str = r##"<!DOCTYPE html>
             border-color: var(--border-focus);
             color: var(--text);
             background: var(--surface-elevated);
+        }
+        .chip-accent {
+            border-color: rgba(245, 158, 11, 0.4);
+            color: var(--accent);
         }
 
         /* Developer Notification Banner */
@@ -521,9 +534,12 @@ pub const INDEX_HTML: &str = r##"<!DOCTYPE html>
         </div>
         <div class="header-meta">
             <span class="tag tag-accent" id="netTag">MAINNET</span>
+            <button class="tag tag-btn tag-accent" id="bitrpcTag" onclick="openBitRpcModal()" title="Configure BitRPC API Key">
+                BITRPC: <span id="bitrpcStatusLabel">OFF</span>
+            </button>
             <span class="tag tag-green">MIRROR FAILOVER</span>
             <span class="tag">v0.1.0</span>
-            <a href="https://github.com/Husteem/txplore" target="_blank" class="tag" style="text-decoration:none;">GITHUB</a>
+            <a href="https://github.com/Husteem/txplore" target="_blank" class="tag tag-btn" style="text-decoration:none;">GITHUB</a>
         </div>
     </header>
 
@@ -543,10 +559,11 @@ pub const INDEX_HTML: &str = r##"<!DOCTYPE html>
             <button class="chip" onclick="loadPreset('segwit_v0')">Native SegWit P2WPKH</button>
             <button class="chip" onclick="loadPreset('taproot')">Taproot Key-Path Spend</button>
             <button class="chip" onclick="loadPreset('runes')">OP_RETURN Runes Carrier</button>
+            <button class="chip chip-accent" onclick="testBitRpcNode()">⚡ Test BitRPC Node</button>
         </div>
     </div>
 
-    <!-- In-App Notification Banner (Replaces harsh browser alert) -->
+    <!-- In-App Notification Banner -->
     <div class="banner" id="statusBanner">
         <span id="bannerText"></span>
         <button class="banner-close" onclick="dismissBanner()">✕</button>
@@ -717,6 +734,64 @@ pub const INDEX_HTML: &str = r##"<!DOCTYPE html>
         let vmTrace = null;
         let currentVmStep = 0;
 
+        function getBitRpcKey() {
+            return localStorage.getItem('bitrpc_api_key') || '';
+        }
+
+        function updateBitRpcTag() {
+            const key = getBitRpcKey();
+            const tag = document.getElementById('bitrpcTag');
+            const lbl = document.getElementById('bitrpcStatusLabel');
+            if (key) {
+                lbl.innerText = 'ACTIVE';
+                tag.className = 'tag tag-btn tag-green';
+            } else {
+                lbl.innerText = 'OFF';
+                tag.className = 'tag tag-btn tag-accent';
+            }
+        }
+
+        function openBitRpcModal() {
+            const current = getBitRpcKey();
+            const key = prompt('Enter your BitRPC API Key (from https://bitrpc.thebuidl.xyz):', current);
+            if (key !== null) {
+                const trimmed = key.trim();
+                if (trimmed) {
+                    localStorage.setItem('bitrpc_api_key', trimmed);
+                    showBanner('[✓] BitRPC Key configured! Bitcoin Core queries now use BitRPC proxy.', 'success');
+                } else {
+                    localStorage.removeItem('bitrpc_api_key');
+                    showBanner('BitRPC Key cleared. Fallback to public Esplora mirrors active.', 'info');
+                }
+                updateBitRpcTag();
+            }
+        }
+
+        async function testBitRpcNode() {
+            const key = getBitRpcKey();
+            if (!key) {
+                openBitRpcModal();
+                return;
+            }
+            showBanner('Querying Bitcoin Core getblockchaininfo via BitRPC proxy...', 'info');
+            try {
+                const res = await fetch('/api/bitrpc', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-BitRPC-Key': key },
+                    body: JSON.stringify({ method: 'getblockchaininfo', params: [] })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    showBanner(`[✓] BitRPC Online! Chain: ${data.chain}, Blocks: ${data.blocks.toLocaleString()}, Headers: ${data.headers.toLocaleString()}`, 'success');
+                } else {
+                    const err = await res.text();
+                    showBanner('[✗] BitRPC Error: ' + err, 'error');
+                }
+            } catch (e) {
+                showBanner('[✗] Network Request Failed: ' + e.message, 'error');
+            }
+        }
+
         function showBanner(msg, type = 'info') {
             const b = document.getElementById('statusBanner');
             const t = document.getElementById('bannerText');
@@ -745,16 +820,23 @@ pub const INDEX_HTML: &str = r##"<!DOCTYPE html>
             const input = document.getElementById('txInput').value.trim();
             if (!input) return;
 
-            showBanner('Querying transaction from Esplora mirrors (mempool.space / blockstream.info)...', 'info');
+            const rpcKey = getBitRpcKey();
+            const sourceText = rpcKey ? 'BitRPC proxy' : 'Esplora mirrors';
+            showBanner(`Querying transaction via ${sourceText}...`, 'info');
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (rpcKey) {
+                headers['X-BitRPC-Key'] = rpcKey;
+            }
 
             try {
                 let res;
                 if (input.length === 64 && /^[0-9a-fA-F]+$/.test(input)) {
-                    res = await fetch(`/api/tx/${input}`);
+                    res = await fetch(`/api/tx/${input}`, { headers });
                 } else {
                     res = await fetch('/api/decode', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers,
                         body: JSON.stringify({ hex: input, network: 'bitcoin' })
                     });
                 }
@@ -1070,6 +1152,7 @@ pub const INDEX_HTML: &str = r##"<!DOCTYPE html>
         });
 
         window.onload = () => {
+            updateBitRpcTag();
             loadPreset('live_mainnet');
         };
     </script>

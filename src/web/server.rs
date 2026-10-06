@@ -8,8 +8,8 @@ use tower_http::trace::TraceLayer;
 
 use crate::fetcher::esplora::EsploraClient;
 use crate::web::handlers::{
-    decode_tx_handler, get_tx_handler, health_handler, index_handler, simulate_script_handler,
-    AppState,
+    bitrpc_call_handler, decode_tx_handler, get_tx_handler, health_handler, index_handler,
+    simulate_script_handler, AppState,
 };
 
 pub async fn start_web_server(
@@ -26,6 +26,7 @@ pub async fn start_web_server(
         .route("/api/tx/:txid", get(get_tx_handler))
         .route("/api/decode", post(decode_tx_handler))
         .route("/api/simulate", post(simulate_script_handler))
+        .route("/api/bitrpc", post(bitrpc_call_handler))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(state);
@@ -43,6 +44,7 @@ pub async fn start_web_server(
     println!("   GET  /api/tx/:txid");
     println!("   POST /api/decode");
     println!("   POST /api/simulate");
+    println!("   POST /api/bitrpc");
     println!("============================================================");
 
     axum::serve(listener, app)

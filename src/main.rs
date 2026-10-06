@@ -3,10 +3,11 @@ use clap::Parser;
 
 use bitcoin::Network;
 use txplore::cli::{
-    AnalyzePsbtArgs, Cli, Commands, EvalScriptArgs, InspectArgs, ServeArgs, TuiArgs,
+    AnalyzePsbtArgs, BitRpcArgs, Cli, Commands, EvalScriptArgs, InspectArgs, ServeArgs, TuiArgs,
 };
 use txplore::decoder::evaluator::ScriptVm;
 use txplore::decoder::psbt::analyze_psbt_str;
+use txplore::fetcher::bitrpc::BitRpcClient;
 use txplore::fetcher::esplora::EsploraClient;
 use txplore::fetcher::offline::load_tx_from_source;
 use txplore::fetcher::rpc::BitcoinCoreRpcClient;
@@ -57,6 +58,7 @@ async fn main() -> Result<()> {
         Commands::Serve(args) => handle_serve(args).await?,
         Commands::EvalScript(args) => handle_eval_script(args)?,
         Commands::AnalyzePsbt(args) => handle_analyze_psbt(args)?,
+        Commands::Bitrpc(args) => handle_bitrpc(args).await?,
     }
 
     Ok(())
@@ -72,11 +74,15 @@ async fn resolve_transaction(
     rpc_pass: Option<String>,
     rpc_cookie: Option<std::path::PathBuf>,
     esplora_url: Option<&str>,
+    bitrpc_key: Option<&str>,
 ) -> Result<DecodedTx> {
     let clean = input.trim();
 
     if clean.len() == 64 && clean.chars().all(|c| c.is_ascii_hexdigit()) {
-        if let Some(url) = rpc_url {
+        if let Some(key) = bitrpc_key {
+            let bitrpc = BitRpcClient::new(key, network);
+            bitrpc.fetch_and_enrich(clean).await
+        } else if let Some(url) = rpc_url {
             let rpc = BitcoinCoreRpcClient::new(url, rpc_user, rpc_pass, rpc_cookie, network)?;
             rpc.fetch_and_enrich(clean)
         } else {
@@ -101,6 +107,7 @@ async fn handle_inspect(args: InspectArgs) -> Result<()> {
         args.rpc_pass,
         args.rpc_cookie,
         args.esplora_url.as_deref(),
+        args.bitrpc_key.as_deref(),
     )
     .await?;
 
@@ -130,6 +137,7 @@ async fn handle_tui(args: TuiArgs) -> Result<()> {
         None,
         None,
         args.esplora_url.as_deref(),
+        args.bitrpc_key.as_deref(),
     )
     .await?;
 
@@ -233,5 +241,22 @@ fn handle_analyze_psbt(args: AnalyzePsbtArgs) -> Result<()> {
     }
     println!("============================================================");
 
+    Ok(())
+}
+
+async fn handle_bitrpc(args: BitRpcArgs) -> Result<()> {
+    let key = args.api_key.or_else(|| std::env::var("BITRPC_API_KEY").ok()).context(
+        "BitRPC API key required. Pass --api-key <KEY> or set export BITRPC_API_KEY='<KEY>'",
+    )?;
+
+    let client = BitRpcClient::new(&key, Network::Bitcoin);
+    let params: serde_json::Value = if let Some(ref p) = args.params {
+        serde_json::from_str(p).unwrap_or_else(|_| serde_json::json!([p]))
+    } else {
+        serde_json::json!([])
+    };
+
+    let result: serde_json::Value = client.call(&args.method, params).await?;
+    println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
 }

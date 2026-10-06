@@ -27,6 +27,9 @@ pub enum Commands {
 
     /// Inspect and analyze a Partially Signed Bitcoin Transaction (PSBT)
     AnalyzePsbt(AnalyzePsbtArgs),
+
+    /// Query Bitcoin Core JSON-RPC via the Rust for Bitcoin BitRPC proxy
+    Bitrpc(BitRpcArgs),
 }
 
 #[derive(Args, Debug)]
@@ -42,6 +45,10 @@ pub struct InspectArgs {
     /// Comma-separated spent input values in satoshis for offline fee calculation
     #[arg(long)]
     pub input_values: Option<String>,
+
+    /// BitRPC API Key for querying Bitcoin Core via https://bitrpc.thebuidl.xyz
+    #[arg(long)]
+    pub bitrpc_key: Option<String>,
 
     /// Bitcoin Core RPC URL
     #[arg(long)]
@@ -90,6 +97,10 @@ pub struct TuiArgs {
     #[arg(long)]
     pub input_values: Option<String>,
 
+    /// BitRPC API Key for querying Bitcoin Core via https://bitrpc.thebuidl.xyz
+    #[arg(long)]
+    pub bitrpc_key: Option<String>,
+
     /// Custom Mempool.space / Esplora API URL
     #[arg(long)]
     pub esplora_url: Option<String>,
@@ -104,6 +115,10 @@ pub struct ServeArgs {
     /// Default Bitcoin network
     #[arg(short, long, default_value = "bitcoin")]
     pub network: String,
+
+    /// BitRPC API Key for querying Bitcoin Core via https://bitrpc.thebuidl.xyz
+    #[arg(long)]
+    pub bitrpc_key: Option<String>,
 
     /// Custom Mempool.space / Esplora API URL
     #[arg(long)]
@@ -126,4 +141,19 @@ pub struct AnalyzePsbtArgs {
     /// PSBT in Base64 or Hex format, or path to PSBT file
     #[arg(index = 1)]
     pub psbt: String,
+}
+
+#[derive(Args, Debug)]
+pub struct BitRpcArgs {
+    /// RPC method (e.g., getblockchaininfo, getrawmempool, getrawtransaction)
+    #[arg(index = 1)]
+    pub method: String,
+
+    /// RPC parameters as JSON array or string (e.g., '["txid", true]')
+    #[arg(index = 2)]
+    pub params: Option<String>,
+
+    /// BitRPC API key (or BITRPC_API_KEY environment variable)
+    #[arg(short, long)]
+    pub api_key: Option<String>,
 }
