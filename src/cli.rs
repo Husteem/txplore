@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(name = "txplore")]
-#[command(author = "husteemah")]
+#[command(author = "Naim Hussain (@husteemah)")]
 #[command(version = "0.1.0")]
 #[command(about = "A high-performance Bitcoin Transaction Explorer, Script Disassembler, and Analyzer in Rust", long_about = None)]
 pub struct Cli {
@@ -36,7 +36,7 @@ pub struct InspectArgs {
     pub input: String,
 
     /// Bitcoin Network (bitcoin, testnet, signet, regtest)
-    #[arg(short, long, default_value = "regtest")]
+    #[arg(short, long, default_value = "bitcoin")]
     pub network: String,
 
     /// Comma-separated spent input values in satoshis for offline fee calculation
@@ -83,7 +83,7 @@ pub struct TuiArgs {
     pub input: String,
 
     /// Bitcoin Network (bitcoin, testnet, signet, regtest)
-    #[arg(short, long, default_value = "regtest")]
+    #[arg(short, long, default_value = "bitcoin")]
     pub network: String,
 
     /// Comma-separated spent input values in satoshis
@@ -102,7 +102,7 @@ pub struct ServeArgs {
     pub port: u16,
 
     /// Default Bitcoin network
-    #[arg(short, long, default_value = "regtest")]
+    #[arg(short, long, default_value = "bitcoin")]
     pub network: String,
 
     /// Custom Mempool.space / Esplora API URL

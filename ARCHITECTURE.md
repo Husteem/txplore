@@ -2,7 +2,7 @@
 
 **Author**: Naim Hussain (@husteemah)  
 **Project**: Rust for Bitcoin Cohort Capstone - Option 4: Transaction Explorer  
-**Repository**: `/home/x0/transaction-explorer`  
+**Repository**: `https://github.com/Husteem/txplore.git`  
 
 ---
 

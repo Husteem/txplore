@@ -29,26 +29,51 @@ Welcome to the comprehensive operational manual for **txplore**. This guide deta
 
 ---
 
-## 1. Quickstart & Binary Location
+## 1. Quickstart & Installation
 
-Build the optimized release binary:
-
-```bash
-cd /home/x0/transaction-explorer
-cargo build --release
-```
-
-The compiled binary will be placed at `target/release/txplore`. For convenience, you can add it to your system PATH or create an alias:
+Clone the repository and enter the project directory:
 
 ```bash
-alias txplore="/home/x0/transaction-explorer/target/release/txplore"
+git clone https://github.com/Husteem/txplore.git
+cd txplore
 ```
 
-Verify installation:
+### Option A: Global Installation via Cargo (Recommended)
+
+Install the `txplore` binary directly into your Cargo environment (`~/.cargo/bin`):
+
+```bash
+cargo install --path .
+```
+
+Verify that `txplore` is available in your PATH:
 
 ```bash
 txplore --version
 # txplore 0.1.0
+```
+
+*(Note: Ensure `~/.cargo/bin` is in your `$PATH`. If running for the first time, run `source ~/.cargo/env` or add `export PATH="$HOME/.cargo/bin:$PATH"` to your `~/.bashrc`)*
+
+### Option B: Local Release Binary Execution
+
+Build the optimized local release binary:
+
+```bash
+cargo build --release
+```
+
+Run directly from the repository root:
+
+```bash
+./target/release/txplore --version
+# txplore 0.1.0
+```
+
+Or execute commands via Cargo:
+
+```bash
+cargo run --release -- inspect <TXID>
 ```
 
 ---

@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use reqwest::Client;
 use serde::Deserialize;
 use std::time::Duration;
@@ -36,50 +36,125 @@ struct EsploraTxResponse {
 
 pub struct EsploraClient {
     client: Client,
-    base_url: String,
+    endpoints: Vec<String>,
     network: Network,
 }
 
 impl EsploraClient {
     pub fn new(base_url: Option<&str>, network: Network) -> Self {
-        let default_url = match network {
-            Network::Bitcoin => "https://mempool.space/api",
-            Network::Testnet => "https://mempool.space/testnet/api",
-            Network::Signet => "https://mempool.space/signet/api",
-            _ => "https://mempool.space/api",
-        };
+        let mut endpoints = Vec::new();
 
-        let url = base_url
-            .unwrap_or(default_url)
-            .trim_end_matches('/')
-            .to_string();
+        if let Some(custom) = base_url {
+            let trimmed = custom.trim_end_matches('/').to_string();
+            if !trimmed.is_empty() {
+                endpoints.push(trimmed);
+            }
+        }
+
+        // Add network defaults with automatic mirror fallback
+        match network {
+            Network::Bitcoin => {
+                let mirrors = [
+                    "https://mempool.space/api",
+                    "https://blockstream.info/api",
+                    "https://mempool.emzy.de/api",
+                ];
+                for m in mirrors {
+                    let s = m.to_string();
+                    if !endpoints.contains(&s) {
+                        endpoints.push(s);
+                    }
+                }
+            }
+            Network::Testnet => {
+                let mirrors = [
+                    "https://mempool.space/testnet/api",
+                    "https://blockstream.info/testnet/api",
+                ];
+                for m in mirrors {
+                    let s = m.to_string();
+                    if !endpoints.contains(&s) {
+                        endpoints.push(s);
+                    }
+                }
+            }
+            Network::Signet => {
+                let mirrors = [
+                    "https://mempool.space/signet/api",
+                ];
+                for m in mirrors {
+                    let s = m.to_string();
+                    if !endpoints.contains(&s) {
+                        endpoints.push(s);
+                    }
+                }
+            }
+            _ => {
+                let mirrors = [
+                    "https://mempool.space/api",
+                    "https://blockstream.info/api",
+                    "https://mempool.emzy.de/api",
+                ];
+                for m in mirrors {
+                    let s = m.to_string();
+                    if !endpoints.contains(&s) {
+                        endpoints.push(s);
+                    }
+                }
+            }
+        }
 
         let client = Client::builder()
-            .timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(15))
+            .connect_timeout(Duration::from_secs(4))
+            .user_agent("txplore/0.1.0 (Bitcoin Transaction Explorer; +https://github.com/Husteem/txplore)")
             .build()
             .unwrap_or_default();
 
         Self {
             client,
-            base_url: url,
+            endpoints,
             network,
         }
     }
 
-    pub async fn fetch_raw_hex(&self, txid: &str) -> Result<String> {
-        let url = format!("{}/tx/{}/hex", self.base_url, txid);
-        let resp = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .context(format!("Failed to connect to Esplora API at {}", url))?;
+    pub fn endpoints(&self) -> &[String] {
+        &self.endpoints
+    }
 
-        if !resp.status().is_success() {
-            anyhow::bail!("Esplora returned HTTP {} for txid {}", resp.status(), txid);
+    pub async fn fetch_raw_hex(&self, txid: &str) -> Result<String> {
+        let mut errors = Vec::new();
+
+        for base in &self.endpoints {
+            let url = format!("{}/tx/{}/hex", base, txid);
+            match self.client.get(&url).send().await {
+                Ok(resp) if resp.status().is_success() => {
+                    match resp.text().await {
+                        Ok(hex_str) => {
+                            let trimmed = hex_str.trim().to_string();
+                            if !trimmed.is_empty() {
+                                return Ok(trimmed);
+                            }
+                        }
+                        Err(e) => {
+                            errors.push(format!("{}: failed reading body ({})", base, e));
+                        }
+                    }
+                }
+                Ok(resp) => {
+                    errors.push(format!("{}: HTTP {}", base, resp.status()));
+                }
+                Err(e) => {
+                    errors.push(format!("{}: {}", base, e));
+                }
+            }
         }
 
-        resp.text().await.context("Failed reading response text")
+        anyhow::bail!(
+            "Failed to retrieve transaction {} across all configured endpoints: {}",
+            txid,
+            errors.join(" | ")
+        )
     }
 
     pub async fn fetch_and_enrich(&self, txid: &str) -> Result<DecodedTx> {
@@ -90,20 +165,24 @@ impl EsploraClient {
     }
 
     pub async fn enrich_with_esplora_data(&self, tx: &mut DecodedTx) -> Result<()> {
-        let url = format!("{}/tx/{}", self.base_url, tx.txid);
-        let resp = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .context("Failed to query Esplora tx details")?;
+        let mut found_response = None;
 
-        if !resp.status().is_success() {
-            return Ok(()); // Non-fatal if node is offline
+        for base in &self.endpoints {
+            let url = format!("{}/tx/{}", base, tx.txid);
+            if let Ok(resp) = self.client.get(&url).send().await {
+                if resp.status().is_success() {
+                    if let Ok(esplora_tx) = resp.json::<EsploraTxResponse>().await {
+                        found_response = Some(esplora_tx);
+                        break;
+                    }
+                }
+            }
         }
 
-        let esplora_tx: EsploraTxResponse =
-            resp.json().await.context("Failed parsing Esplora JSON")?;
+        let esplora_tx = match found_response {
+            Some(res) => res,
+            None => return Ok(()), // Non-fatal if offline
+        };
 
         // Populate confirmations
         tx.confirmation_info = Some(ConfirmationInfo {
